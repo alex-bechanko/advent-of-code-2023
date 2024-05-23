@@ -1,0 +1,54 @@
+
+# Regexes which if matched by a file path will always be excluded from
+# getting a license header
+excludes:
+  - \.gitignore
+  - .*lock
+  - \.git/.*
+  - \.licensure\.yml
+  - README.*
+  - LICENSE.*
+  - .*\.(md|rst|txt)
+  - .*\.toml
+  - .*\.nix
+  - \.direnv/.*
+
+# Definition of the licenses used on this project and to what files
+# they should apply.
+#
+# No default license configuration is provided. This section must be
+# configured by the user.
+licenses:
+  - files: any
+    ident: GPL-3.0
+    authors:
+      - name: Alex Bechanko
+        email: alexbechanko@gmail.com
+    template: |
+      Advent of Code 2023 Solutions
+      Copyright (C) [year] [name of author]
+
+      This program is free software: you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation, either version 3 of the License, or
+      (at your option) any later version.
+
+      This program is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+comments:
+  - extensions:
+      - rs
+    columns: 80
+    commenter:
+      type: block
+      start_block_char: "/*\n"
+      end_block_char: "*/"
+      per_line_char: "*"
+      trailing_lines: 2
+   
