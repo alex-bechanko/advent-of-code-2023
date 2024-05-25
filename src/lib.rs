@@ -16,4 +16,55 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#[derive(Debug, Clone)]
+pub enum Day {
+    Day(usize),
+}
 
+#[derive(Debug, Clone)]
+pub struct ParseDayError;
+impl std::error::Error for ParseDayError {}
+
+impl std::fmt::Display for ParseDayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to parse day from a string")
+    }
+}
+
+impl std::str::FromStr for Day {
+    type Err = ParseDayError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<usize>().map_err(|_| ParseDayError).map(|x| Self::Day(x))
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub enum Part {
+    Part1,
+    Part2,
+}
+
+#[derive(Debug)]
+pub struct ParsePartError;
+impl std::error::Error for ParsePartError {}
+
+impl std::fmt::Display for ParsePartError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to parse part from a string")
+    }
+}
+
+impl std::str::FromStr for Part {
+    type Err = ParsePartError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+       if s == "1" || s == "a" {
+           Ok(Self::Part1)
+       } else if s == "2" || s == "b" {
+           Ok(Self::Part2)
+       } else {
+           Err(ParsePartError)
+       }
+    }
+}

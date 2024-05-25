@@ -16,8 +16,50 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::path::PathBuf;
+use clap::{Args, Parser, Subcommand};
+
+#[derive(Debug, Parser)]
+#[command(name="aoc")]
+#[command(author="Alex Bechanko")]
+#[command(about="Compute and time Advent of Code 2023 solutions")]
+struct CommandLineArgs {
+    #[command(subcommand)]
+    command: CommandArgs,
+}
+
+#[derive(Debug Subcommand)]
+enum CommandArgs {
+    RunAll(RunAllArgs),
+    RunDay(RunDayArgs),
+}
+
+#[derive(Debug, Args)]
+struct RunDayArgs {
+    #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
+    day: aoc2023::Day,
+
+    #[arg(value_parser=clap::value_parser!(aoc2023::Part))]
+    part: Option<aoc2023::Part>,
+
+    #[arg(short='i')]
+    input: Option<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+struct RunAllArgs {
+    #[arg(short='i')]
+    input: Option<PathBuf>,
+}
+
 
 fn main() {
+
+    let cli = CommandLineArgs::parse();
+
+    match 
+
+
 
     println!("Hello, world!");
 
