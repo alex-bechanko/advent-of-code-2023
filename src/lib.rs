@@ -17,9 +17,7 @@
 */
 
 #[derive(Debug, Clone)]
-pub enum Day {
-    Day(usize),
-}
+pub struct Day(pub usize);
 
 #[derive(Debug, Clone)]
 pub struct ParseDayError;
@@ -35,7 +33,14 @@ impl std::str::FromStr for Day {
     type Err = ParseDayError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<usize>().map_err(|_| ParseDayError).map(|x| Self::Day(x))
+        let x = s.parse::<usize>().map_err(|_| ParseDayError)?;
+
+        if x > 0 && x <= 25 {
+            Ok(Self(x))
+        } else {
+            Err(ParseDayError)
+        }
+
     }
 }
 

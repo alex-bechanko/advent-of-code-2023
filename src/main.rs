@@ -16,51 +16,59 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::path::PathBuf;
-use clap::{Args, Parser, Subcommand};
+const DEFAULT_INPUT_FOLDER: &str = "inputs";
+
+use clap::{Parser, Subcommand};
+use std::{collections::HashMap, path::{Path, PathBuf}};
 
 #[derive(Debug, Parser)]
-#[command(name="aoc")]
-#[command(author="Alex Bechanko")]
-#[command(about="Compute and time Advent of Code 2023 solutions")]
+#[command(name = "aoc")]
+#[command(author = "Alex Bechanko")]
+#[command(about = "Compute and time Advent of Code 2023 solutions")]
 struct CommandLineArgs {
     #[command(subcommand)]
     command: CommandArgs,
 }
 
-#[derive(Debug Subcommand)]
+#[derive(Debug, Subcommand)]
 enum CommandArgs {
-    RunAll(RunAllArgs),
-    RunDay(RunDayArgs),
+    All {
+        #[arg(short = 'i')]
+        input: Option<PathBuf>,
+    },
+    Day {
+        #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
+        day: aoc2023::Day,
+
+        #[arg(value_parser=clap::value_parser!(aoc2023::Part))]
+        part: Option<aoc2023::Part>,
+
+        #[arg(short = 'i')]
+        input: Option<PathBuf>,
+    },
 }
 
-#[derive(Debug, Args)]
-struct RunDayArgs {
-    #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
-    day: aoc2023::Day,
-
-    #[arg(value_parser=clap::value_parser!(aoc2023::Part))]
-    part: Option<aoc2023::Part>,
-
-    #[arg(short='i')]
-    input: Option<PathBuf>,
+fn get_default_input(day: aoc2023::Day) -> PathBuf {
+    Path::new(DEFAULT_INPUT_FOLDER).join(format!("2023-12-{:02}", day.0))
 }
 
-#[derive(Debug, Args)]
-struct RunAllArgs {
-    #[arg(short='i')]
-    input: Option<PathBuf>,
-}
+fn run_day_solutions(day: aoc2023::Day, part: Option<aoc2023::Part>, input: Option<PathBuf>) -> () {
+    let parts: Vec<aoc2023::Part> = match part {
+        None => vec![aoc2023::Part::Part1, aoc2023::Part::Part2],
+        Some(x) => vec![x],
+    };
 
+    let input = input.unwrap_or(get_default_input(day));
+
+}
 
 fn main() {
-
     let cli = CommandLineArgs::parse();
 
-    match 
-
-
+    match &cli.command {
+        CommandArgs::All { input } => {}
+        CommandArgs::Day { day, part, input } => {}
+    }
 
     println!("Hello, world!");
-
 }
