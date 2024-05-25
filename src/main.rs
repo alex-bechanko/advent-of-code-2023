@@ -18,8 +18,11 @@
 
 const DEFAULT_INPUT_FOLDER: &str = "inputs";
 
-use clap::{Parser, Subcommand};
-use std::{borrow::Borrow, path::{Path, PathBuf}, time::Duration};
+use clap::{Args, Parser, Subcommand};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "aoc")]
@@ -32,20 +35,71 @@ struct CommandLineArgs {
 
 #[derive(Debug, Subcommand)]
 enum CommandArgs {
-    All {
-        #[arg(short = 'i')]
-        input: Option<PathBuf>,
-    },
-    Day {
-        #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
-        day: aoc2023::Day,
+    All(AllSolutionRunnerArgs),
+    Day(DaySolutionRunnerArgs),
+}
 
-        #[arg(value_parser=clap::value_parser!(aoc2023::DayPart))]
-        part: Option<aoc2023::DayPart>,
+#[derive(Debug, Args)]
+struct AllSolutionRunnerArgs {
+    #[arg(short = 'i')]
+    input: Option<PathBuf>,
+}
 
-        #[arg(short = 'i')]
-        input: Option<PathBuf>,
-    },
+impl AllSolutionRunnerArgs {
+    fn run(self) -> () {
+
+    }
+}
+
+#[derive(Debug, Args)]
+struct DaySolutionRunnerArgs {
+    #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
+    day: aoc2023::Day,
+
+    #[arg(value_parser=clap::value_parser!(aoc2023::DayPart))]
+    part: Option<aoc2023::DayPart>,
+
+    #[arg(short = 'i')]
+    input: Option<PathBuf>,
+}
+
+impl DaySolutionRunnerArgs {
+    fn run(self) -> () {
+        let parts: Vec<aoc2023::DayPart> = match self.part {
+            None => vec![aoc2023::DayPart::Part1, aoc2023::DayPart::Part2],
+            Some(x) => vec![x],
+        };
+
+        let input_path = self.input.unwrap_or(get_default_input(&self.day));
+        let Ok(data) = std::fs::read_to_string(&input_path) else {
+            println!("Failed to read input file {}", input_path.display());
+            return;
+        };
+
+        let mut total_duration = Duration::ZERO;
+
+        let aoc = aoc2023::AoC2023::new();
+
+        for p in parts {
+            let (answer, duration) = match aoc.run_solver(self.day, p, &data) {
+                Ok(x) => x,
+                Err(e) => {
+                    println!("Error occurred running solver: {}", e);
+                    return;
+                }
+            };
+
+            println!(
+                "Day {} Solution {}: {} ..... {}",
+                self.day,
+                p,
+                answer,
+                format_duration(&duration)
+            );
+
+            total_duration = total_duration + duration;
+        }
+    }
 }
 
 fn get_default_input(day: &aoc2023::Day) -> PathBuf {
@@ -72,46 +126,11 @@ fn format_duration(d: &Duration) -> String {
     format!("{:2} {}", duration, unit)
 }
 
-fn run_day_solutions(day: aoc2023::Day, part: Option<aoc2023::DayPart>, input: Option<PathBuf>) -> () {
-    let parts: Vec<aoc2023::DayPart> = match part {
-        None => vec![aoc2023::DayPart::Part1, aoc2023::DayPart::Part2],
-        Some(x) => vec![x],
-    };
-
-    let input_path = input.unwrap_or(get_default_input(&day));
-    let Ok(data) = std::fs::read_to_string(&input_path) else {
-        println!("Failed to read input file {}", input_path.display());
-        return;
-    };
-
-    let mut total_duration = Duration::ZERO;
-
-    let aoc = aoc2023::AoC2023::new();
-
-    for p in parts  {
-        let (answer, duration) = match aoc.run_solver(day.clone(), p.clone(), &data) {
-            Ok(x) => x,
-            Err(e) => {
-                println!("Error occurred running solver: {}", e);
-                return;
-            },
-        };
-
-        println!("Day {} Solution {}: {} ..... {}", day, p, answer, format_duration(&duration));
-
-        total_duration = total_duration + duration;
-
-        
-    }
-}
-
 fn main() {
     let cli = CommandLineArgs::parse();
 
-    match &cli.command {
-        CommandArgs::All { input } => {}
-        CommandArgs::Day { day, part, input } => {}
+    match cli.command {
+        CommandArgs::All(all_runner) => {}
+        CommandArgs::Day(day_runner) => day_runner.run(),
     }
-
-    println!("Hello, world!");
 }

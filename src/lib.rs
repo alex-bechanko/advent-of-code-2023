@@ -39,6 +39,13 @@ impl<'a> AoC2023<'a> {
 
         Ok((ans, elapsed))
     }
+
+    pub fn completed_solutions(&self) -> Vec<(Day, DayPart)> {
+        let sols: Vec<(Day, DayPart)> = self.solutions.keys().map(|x| x.clone()).collect();
+
+
+
+    }
 }
 
 #[derive(Debug)]
@@ -58,7 +65,7 @@ impl std::fmt::Display for Aoc2023Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Day {
     num: usize,
 }
@@ -103,7 +110,7 @@ impl std::str::FromStr for Day {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DayPart {
     Part1,
     Part2,
