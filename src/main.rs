@@ -19,7 +19,7 @@
 const DEFAULT_INPUT_FOLDER: &str = "inputs";
 
 use clap::{Parser, Subcommand};
-use std::{collections::HashMap, path::{Path, PathBuf}};
+use std::{borrow::Borrow, path::{Path, PathBuf}, time::Duration};
 
 #[derive(Debug, Parser)]
 #[command(name = "aoc")]
@@ -40,26 +40,69 @@ enum CommandArgs {
         #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
         day: aoc2023::Day,
 
-        #[arg(value_parser=clap::value_parser!(aoc2023::Part))]
-        part: Option<aoc2023::Part>,
+        #[arg(value_parser=clap::value_parser!(aoc2023::DayPart))]
+        part: Option<aoc2023::DayPart>,
 
         #[arg(short = 'i')]
         input: Option<PathBuf>,
     },
 }
 
-fn get_default_input(day: aoc2023::Day) -> PathBuf {
-    Path::new(DEFAULT_INPUT_FOLDER).join(format!("2023-12-{:02}", day.0))
+fn get_default_input(day: &aoc2023::Day) -> PathBuf {
+    Path::new(DEFAULT_INPUT_FOLDER).join(format!("2023-12-{:02}", day.to_usize()))
 }
 
-fn run_day_solutions(day: aoc2023::Day, part: Option<aoc2023::Part>, input: Option<PathBuf>) -> () {
-    let parts: Vec<aoc2023::Part> = match part {
-        None => vec![aoc2023::Part::Part1, aoc2023::Part::Part2],
+fn format_duration(d: &Duration) -> String {
+    let secs = u128::from(d.as_secs());
+    let millis = d.as_millis();
+    let micros = d.as_millis();
+    let nanos = d.as_nanos();
+
+    let (major, minor, unit) = if secs > 0 {
+        (secs, millis, "s")
+    } else if millis > 0 {
+        (millis, micros, "ms")
+    } else if micros > 0 {
+        (micros, nanos, "μs")
+    } else {
+        (nanos, nanos * 1000, "ns")
+    };
+
+    let duration = major as f64 + (minor - major * 1000) as f64 / 1000.0;
+    format!("{:2} {}", duration, unit)
+}
+
+fn run_day_solutions(day: aoc2023::Day, part: Option<aoc2023::DayPart>, input: Option<PathBuf>) -> () {
+    let parts: Vec<aoc2023::DayPart> = match part {
+        None => vec![aoc2023::DayPart::Part1, aoc2023::DayPart::Part2],
         Some(x) => vec![x],
     };
 
-    let input = input.unwrap_or(get_default_input(day));
+    let input_path = input.unwrap_or(get_default_input(&day));
+    let Ok(data) = std::fs::read_to_string(&input_path) else {
+        println!("Failed to read input file {}", input_path.display());
+        return;
+    };
 
+    let mut total_duration = Duration::ZERO;
+
+    let aoc = aoc2023::AoC2023::new();
+
+    for p in parts  {
+        let (answer, duration) = match aoc.run_solver(day.clone(), p.clone(), &data) {
+            Ok(x) => x,
+            Err(e) => {
+                println!("Error occurred running solver: {}", e);
+                return;
+            },
+        };
+
+        println!("Day {} Solution {}: {} ..... {}", day, p, answer, format_duration(&duration));
+
+        total_duration = total_duration + duration;
+
+        
+    }
 }
 
 fn main() {

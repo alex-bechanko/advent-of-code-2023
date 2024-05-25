@@ -16,8 +16,72 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#[derive(Debug, Clone)]
-pub struct Day(pub usize);
+use std::{collections::HashMap, error::Error, fmt::Display, time::{Duration, Instant}};
+type Solver<'a> = &'a dyn Fn(&str) -> Result<String, Box<dyn Error>>;
+
+pub struct AoC2023<'a> {
+    solutions: HashMap<(Day, DayPart), Solver<'a>>,
+}
+
+impl<'a> AoC2023<'a> {
+    pub fn new() -> Self {
+        let solutions = HashMap::new();
+
+        Self { solutions }
+    }
+
+    pub fn run_solver(&self, d: Day, p: DayPart, input: &str) -> Result<(String, Duration), Aoc2023Error> {
+        let solver = self.solutions.get(&(d, p)).ok_or(Aoc2023Error::NoSolver)?;
+
+        let timer = Instant::now();
+        let ans = solver(input).map_err(|e| Aoc2023Error::SolverError(e))?;
+        let elapsed = timer.elapsed();
+
+        Ok((ans, elapsed))
+    }
+}
+
+#[derive(Debug)]
+pub enum Aoc2023Error {
+    NoSolver,
+    SolverError(Box<dyn Error>),
+}
+impl std::error::Error for Aoc2023Error {}
+
+impl std::fmt::Display for Aoc2023Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Aoc2023Error::NoSolver => write!(f, "No solver found"),
+            Aoc2023Error::SolverError(e) => write!(f, "Error occurred running solver: {}", e),
+
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Day {
+    num: usize,
+}
+
+impl Day {
+    pub fn new(value: usize) -> Option<Self> {
+        if value <= 0 || value > 25 {
+            None
+        } else {
+            Some(Self { num: value })
+        }
+    }
+
+    pub fn to_usize(&self) -> usize {
+        self.num
+    }
+}
+
+impl Display for Day {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.num.fmt(f)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ParseDayError;
@@ -35,20 +99,23 @@ impl std::str::FromStr for Day {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let x = s.parse::<usize>().map_err(|_| ParseDayError)?;
 
-        if x > 0 && x <= 25 {
-            Ok(Self(x))
-        } else {
-            Err(ParseDayError)
-        }
-
+        Day::new(x).ok_or(ParseDayError)
     }
 }
 
-
-#[derive(Debug, Clone)]
-pub enum Part {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DayPart {
     Part1,
     Part2,
+}
+
+impl Display for DayPart {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Part1 => write!(f, "1"),
+            Self::Part2 => write!(f, "2"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -61,15 +128,15 @@ impl std::fmt::Display for ParsePartError {
     }
 }
 
-impl std::str::FromStr for Part {
+impl std::str::FromStr for DayPart {
     type Err = ParsePartError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-       if s == "1" || s == "a" {
-           Ok(Self::Part1)
-       } else if s == "2" || s == "b" {
-           Ok(Self::Part2)
-       } else {
-           Err(ParsePartError)
-       }
+        if s == "1" || s == "a" {
+            Ok(Self::Part1)
+        } else if s == "2" || s == "b" {
+            Ok(Self::Part2)
+        } else {
+            Err(ParsePartError)
+        }
     }
 }
