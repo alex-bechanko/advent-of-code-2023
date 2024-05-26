@@ -15,14 +15,12 @@
 * You should have received a copy of the GNU General Public License along with
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-const DEFAULT_INPUT_FOLDER: &str = "inputs";
+mod aoc;
 
 use clap::{Args, Parser, Subcommand};
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{path::PathBuf, str::FromStr, time::Duration};
+
+const DEFAULT_FOLDER: &str = "inputs";
 
 #[derive(Debug, Parser)]
 #[command(name = "aoc")]
@@ -35,75 +33,26 @@ struct CommandLineArgs {
 
 #[derive(Debug, Subcommand)]
 enum CommandArgs {
-    All(AllSolutionRunnerArgs),
-    Day(DaySolutionRunnerArgs),
+    #[command(about = "Run and time every day's solutions")]
+    All(AllArgs),
+
+    #[command(about = "Run and time a specific day's solutions")]
+    Day(DayArgs),
 }
 
 #[derive(Debug, Args)]
-struct AllSolutionRunnerArgs {
-    #[arg(short = 'i')]
-    input: Option<PathBuf>,
-}
-
-impl AllSolutionRunnerArgs {
-    fn run(self) -> () {
-
-    }
+struct AllArgs {
+    #[arg(long)]
+    input_folder: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
-struct DaySolutionRunnerArgs {
-    #[arg(value_parser=clap::value_parser!(aoc2023::Day))]
-    day: aoc2023::Day,
+struct DayArgs {
+    #[arg(value_parser=clap::value_parser!(aoc::SolutionDay))]
+    day: aoc::SolutionDay,
 
-    #[arg(value_parser=clap::value_parser!(aoc2023::DayPart))]
-    part: Option<aoc2023::DayPart>,
-
-    #[arg(short = 'i')]
-    input: Option<PathBuf>,
-}
-
-impl DaySolutionRunnerArgs {
-    fn run(self) -> () {
-        let parts: Vec<aoc2023::DayPart> = match self.part {
-            None => vec![aoc2023::DayPart::Part1, aoc2023::DayPart::Part2],
-            Some(x) => vec![x],
-        };
-
-        let input_path = self.input.unwrap_or(get_default_input(&self.day));
-        let Ok(data) = std::fs::read_to_string(&input_path) else {
-            println!("Failed to read input file {}", input_path.display());
-            return;
-        };
-
-        let mut total_duration = Duration::ZERO;
-
-        let aoc = aoc2023::AoC2023::new();
-
-        for p in parts {
-            let (answer, duration) = match aoc.run_solver(self.day, p, &data) {
-                Ok(x) => x,
-                Err(e) => {
-                    println!("Error occurred running solver: {}", e);
-                    return;
-                }
-            };
-
-            println!(
-                "Day {} Solution {}: {} ..... {}",
-                self.day,
-                p,
-                answer,
-                format_duration(&duration)
-            );
-
-            total_duration = total_duration + duration;
-        }
-    }
-}
-
-fn get_default_input(day: &aoc2023::Day) -> PathBuf {
-    Path::new(DEFAULT_INPUT_FOLDER).join(format!("2023-12-{:02}", day.to_usize()))
+    #[arg(long)]
+    input_file: Option<PathBuf>,
 }
 
 fn format_duration(d: &Duration) -> String {
@@ -126,11 +75,69 @@ fn format_duration(d: &Duration) -> String {
     format!("{:2} {}", duration, unit)
 }
 
-fn main() {
-    let cli = CommandLineArgs::parse();
+fn run_day(args: DayArgs) -> () {
+    let default_folder = PathBuf::from_str(DEFAULT_FOLDER).unwrap();
 
-    match cli.command {
-        CommandArgs::All(all_runner) => {}
-        CommandArgs::Day(day_runner) => day_runner.run(),
+    let input_file = args
+        .input_file
+        .unwrap_or(aoc::day_file(&default_folder, args.day));
+
+    match aoc::solve_day(args.day, &input_file) {
+        Ok(ans) => {
+            println!(
+                "Day {:02} Part A Solution {} .... {}",
+                args.day,
+                ans.part_a_result,
+                format_duration(&ans.part_a_duration)
+            );
+            println!(
+                "Day {:02} Part B Solution {} .... {}",
+                args.day,
+                ans.part_b_result,
+                format_duration(&ans.part_b_duration)
+            );
+        }
+        Err(e) => {
+            println!("Day {:02} Error: {}", args.day, e);
+        }
+    }
+}
+
+fn run_all(args: AllArgs) -> () {
+    let default_folder = PathBuf::from_str(DEFAULT_FOLDER).unwrap();
+    let input_folder = args.input_folder.unwrap_or(default_folder);
+
+    let mut total_duration = std::time::Duration::ZERO;
+    for d in 1..26 {
+        let day = aoc::SolutionDay::new(d).unwrap();
+        let input = aoc::day_file(&input_folder, day);
+
+        match aoc::solve_day(day, &input) {
+            Err(e) => println!("Day {} Error: {}", day, e),
+            Ok(res) => {
+                total_duration += res.part_a_duration + res.part_b_duration;
+                println!(
+                    "Day {} Part A: {} .... {}",
+                    day,
+                    res.part_a_result,
+                    format_duration(&res.part_a_duration)
+                );
+                println!(
+                    "       Part B: {} .... {}",
+                    res.part_b_result,
+                    format_duration(&res.part_b_duration)
+                );
+                
+            }
+        }
+    }
+    println!("Total Duration .... {}", format_duration(&total_duration));
+}
+
+fn main() {
+    let _cli = CommandLineArgs::parse();
+    match _cli.command {
+        CommandArgs::Day(args) => run_day(args),
+        CommandArgs::All(args) => run_all(args),
     }
 }

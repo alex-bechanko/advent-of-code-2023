@@ -8,11 +8,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
 
-[lib]
-name = "aoc2023"
-path = "src/lib.rs"
-
-
 [[bin]]
 name = "aoc2023"
 path = "src/main.rs"
