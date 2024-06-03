@@ -16,7 +16,12 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crossterm::{ExecutableCommand, QueueableCommand};
+
 use crate::{aoc, config, time};
+use std::fmt::Display;
+use std::io::stdout;
+use std::io::Write;
 use std::{sync::mpsc, thread, time::Duration};
 
 struct WorkerResult {
@@ -42,17 +47,70 @@ impl Worker {
     }
 }
 
+struct SolutionState {
+    part_a_state: SolutionStatus,
+    part_b_state: SolutionStatus,
+    day: aoc::Day,
+
+}
+
 enum SolutionStatus {
     Waiting,
     Running,
     Done(WorkerResult),
 }
 
+#[derive(Debug, Clone)]
+struct CliAnimation {
+    frame_index: usize,
+    frames: Vec<char>,
+}
+
+impl CliAnimation {
+    fn update(&mut self) -> () {
+        self.frame_index = (self.frame_index + 1) % self.frames.len()
+    }
+}
+
+impl Display for CliAnimation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.frames[self.frame_index])
+    }
+}
+
+fn running_animation() -> CliAnimation {
+    CliAnimation {
+        frame_index: 0,
+        frames: vec!['⠏', '⠛', '⠹', '⠼', '⠶', '⠧'],
+    }
+}
+
+fn waiting_animation() -> CliAnimation {
+    CliAnimation {
+        frame_index: 0,
+        frames: vec!['⠄', '⠄', '⠄', '⠄', ' ', ' ', ' ', ' '],
+    }
+}
+
 struct App {
     config: config::Config,
     tick_rx: mpsc::Receiver<()>,
 
-    solutions: Vec<WorkerResult>,
+    solutions: Vec<SolutionState>,
+    animations: CliAnimation,
+}
+
+fn print_results(app: &App) -> Result<(), std::io::Error> {
+    stdout().execute(crossterm::cursor::Hide)?;
+
+    for sol in app.solutions.iter() {
+        println!("{}.{}", sol.day, aoc::Part::A);
+        println!("  .{}", aoc::Part::B);
+    }
+
+    stdout().execute(crossterm::cursor::MoveUp(50))?;
+
+    Ok(())
 }
 
 pub fn run(config: config::Config) -> Result<(), std::io::Error> {
@@ -61,16 +119,26 @@ pub fn run(config: config::Config) -> Result<(), std::io::Error> {
 
     let (tick_tx, tick_rx) = mpsc::channel();
 
-    let solutions = Vec::with_capacity(num_days);
+    let mut solutions = Vec::with_capacity(num_days);
+    for d in aoc::Day::all() {
+        solutions.push(SolutionState {
+            part_a_state: SolutionStatus::Waiting,
+            part_b_state: SolutionStatus::Waiting,
+            day: d,
+        });
+    }
 
-    let app = App {
+    let mut app = App {
         config,
         tick_rx,
         solutions,
+        animations: waiting_animation(),
     };
 
+    let tick_interval = app.config.tui_update_interval;
+
     thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(tick_interval);
         tick_tx.send(()).unwrap();
     });
 
@@ -78,8 +146,9 @@ pub fn run(config: config::Config) -> Result<(), std::io::Error> {
 
     loop {
         if let Ok(_) = app.tick_rx.try_recv() {
-            println!("tick!");
             count += 1;
+            print_results(&app)?;
+            app.animations.update();
         }
 
         if count == 10 {

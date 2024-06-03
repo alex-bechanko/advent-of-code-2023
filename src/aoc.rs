@@ -75,6 +75,10 @@ impl Day {
             Ok(Day(d as usize))
         }
     }
+
+    pub fn all() -> Vec<Day> {
+        (1..=25).map(|x| Day::new(x).unwrap()).collect()
+    }
 }
 
 impl std::fmt::Display for Day {

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 /*
 * Advent of Code 2023 Solutions Copyright (C) 2024 Alex Bechanko
 * <alexbechanko@gmail.com>
@@ -16,10 +18,10 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 mod aoc;
-mod config;
-mod tui;
 mod cli;
+mod config;
 mod time;
+mod tui;
 
 fn main() -> Result<(), std::io::Error> {
     let config = config::Config::default();
