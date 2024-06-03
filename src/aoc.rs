@@ -16,29 +16,31 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-type Solution<'a> = &'a dyn Fn(&str) -> Result<String, Box<dyn std::error::Error>>;
+use crate::time;
 
-type Day<'a> = (Solution<'a>, Solution<'a>);
+type SolutionFunc<'a> = &'a dyn Fn(&str) -> Result<String, Box<dyn std::error::Error>>;
 
-const DAYS: [Day; 0] = [];
+type DayFuncs<'a> = (SolutionFunc<'a>, SolutionFunc<'a>);
+
+const DAYS: [DayFuncs; 0] = [];
 
 #[derive(Debug)]
-pub enum RunError {
-    DayNotImplemented(SolutionDay),
+pub enum SolveError {
+    NotImplemented(Day, Part),
     FileError(std::path::PathBuf),
-    SolutionError(SolutionDay, SolutionPart, Box<dyn std::error::Error>),
+    SolutionError(Day, Part, Box<dyn std::error::Error>),
 }
 
-impl std::error::Error for RunError {}
+impl std::error::Error for SolveError {}
 
-impl std::fmt::Display for RunError {
+impl std::fmt::Display for SolveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RunError::DayNotImplemented(d) => write!(f, "Day {} not implemented", d),
-            RunError::FileError(path) => {
+            SolveError::NotImplemented(day, part) => write!(f, "Problem {}.{} not implemented", day, part),
+            SolveError::FileError(path) => {
                 write!(f, "Failed to read file {}", path.to_string_lossy())
             }
-            RunError::SolutionError(day, part, err) => {
+            SolveError::SolutionError(day, part, err) => {
                 write!(f, "Solution for day {} part {} failed: {}", day, part, err)
             }
         }
@@ -46,14 +48,14 @@ impl std::fmt::Display for RunError {
 }
 
 #[derive(Debug)]
-pub enum SolutionDayError {
+pub enum DayError {
     InvalidDay(usize),
     ParseFailure(String)
 }
 
-impl std::error::Error for SolutionDayError {}
+impl std::error::Error for DayError {}
 
-impl std::fmt::Display for SolutionDayError {
+impl std::fmt::Display for DayError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::ParseFailure(s) => write!(f, "Failed to parse '{}' into a day", s),
@@ -63,93 +65,76 @@ impl std::fmt::Display for SolutionDayError {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct SolutionDay(usize);
+pub struct Day(usize);
 
-impl SolutionDay {
-    pub fn new(d: usize) -> Result<SolutionDay, SolutionDayError> {
+impl Day {
+    pub fn new(d: usize) -> Result<Day, DayError> {
         if d <= 0 || d > 25 {
-            Err(SolutionDayError::InvalidDay(d))
+            Err(DayError::InvalidDay(d))
         } else {
-            Ok(SolutionDay(d as usize))
+            Ok(Day(d as usize))
         }
     }
 }
 
-impl std::fmt::Display for SolutionDay {
+impl std::fmt::Display for Day {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::str::FromStr for SolutionDay {
-    type Err = SolutionDayError;
+impl std::str::FromStr for Day {
+    type Err = DayError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let d = s
             .parse()
-            .map_err(|_| SolutionDayError::ParseFailure(s.to_string()))?;
+            .map_err(|_| DayError::ParseFailure(s.to_string()))?;
 
         if d <= 0 || d > 25 {
-            Err(SolutionDayError::ParseFailure(s.to_string()))
+            Err(DayError::ParseFailure(s.to_string()))
         } else {
-            Ok(SolutionDay(d))
+            Ok(Day(d))
         }
     }
 }
 
 #[derive(Debug)]
-pub enum SolutionPart {
-    PartA,
-    PartB,
+pub enum Part {
+    A,
+    B,
 }
 
-#[derive(Debug)]
-pub struct SolutionPartParseFailure;
-
-impl std::fmt::Display for SolutionPart {
+impl std::fmt::Display for Part {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let p = match self {
-            SolutionPart::PartA => "A",
-            SolutionPart::PartB => "B",
+            Part::A => "A",
+            Part::B => "B",
         };
         write!(f, "{}", p)
     }
 }
 
-pub struct DayResult {
-    pub part_a_result: String,
-    pub part_a_duration: std::time::Duration,
-
-    pub part_b_result: String,
-    pub part_b_duration: std::time::Duration,
-}
-
-pub fn solve_day(day: SolutionDay, input: &std::path::Path) -> Result<DayResult, RunError> {
+pub fn solve(day: Day, part: Part, input: &std::path::Path) -> Result<(String, time::Duration), SolveError> {
     let Some((part_a, part_b)) = DAYS.get(day.0 - 1) else {
-        return Err(RunError::DayNotImplemented(day.clone()));
+        return Err(SolveError::NotImplemented(day, part));
     };
 
     let Ok(data) = std::fs::read_to_string(input) else {
-        return Err(RunError::FileError(input.to_path_buf()));
+        return Err(SolveError::FileError(input.to_path_buf()));
     };
 
-    let part_a_start = std::time::Instant::now();
-    let part_a_result =
-        part_a(&data).map_err(|e| RunError::SolutionError(day.clone(), SolutionPart::PartA, e))?;
-    let part_a_duration = part_a_start.elapsed();
+    let part_func = match part {
+        Part::A => part_a,
+        Part::B => part_b,
+    };
 
-    let part_b_start = std::time::Instant::now();
-    let part_b_result =
-        part_b(&data).map_err(|e| RunError::SolutionError(day.clone(), SolutionPart::PartB, e))?;
-    let part_b_duration = part_b_start.elapsed();
+    let start = std::time::Instant::now();
+    let result = part_func(&data).map_err(|e| SolveError::SolutionError(day, part, e))?;
+    let duration = start.elapsed().into();
 
-    Ok(DayResult {
-        part_a_result,
-        part_a_duration,
-        part_b_result,
-        part_b_duration,
-    })
+    Ok((result, duration))
 }
 
-pub fn day_file(input_folder: &std::path::Path, day: SolutionDay) -> std::path::PathBuf {
+pub fn day_file(input_folder: &std::path::Path, day: Day) -> std::path::PathBuf {
     input_folder.join(format!("2023-12-{:02}.txt", day.0))
 }
