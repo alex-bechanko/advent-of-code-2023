@@ -102,6 +102,12 @@ impl std::str::FromStr for Day {
     }
 }
 
+impl Into<usize> for Day {
+    fn into(self) -> usize {
+        self.0 
+    }
+}
+
 #[derive(Debug)]
 pub enum Part {
     A,

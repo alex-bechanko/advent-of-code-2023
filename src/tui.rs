@@ -16,13 +16,12 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crossterm::{ExecutableCommand, QueueableCommand};
+use crossterm::ExecutableCommand;
 
+use crate::spinner::{self, Spinner};
 use crate::{aoc, config, time};
 use std::fmt::Display;
-use std::io::stdout;
-use std::io::Write;
-use std::{sync::mpsc, thread, time::Duration};
+use std::{sync::mpsc, thread};
 
 struct WorkerResult {
     worker_id: usize,
@@ -47,68 +46,77 @@ impl Worker {
     }
 }
 
-struct SolutionState {
-    part_a_state: SolutionStatus,
-    part_b_state: SolutionStatus,
-    day: aoc::Day,
-
+enum PartStatus {
+    Waiting(Spinner),
+    Running(Spinner),
+    Done(WorkerResult)
 }
 
-enum SolutionStatus {
-    Waiting,
-    Running,
-    Done(WorkerResult),
-}
-
-#[derive(Debug, Clone)]
-struct CliAnimation {
-    frame_index: usize,
-    frames: Vec<char>,
-}
-
-impl CliAnimation {
-    fn update(&mut self) -> () {
-        self.frame_index = (self.frame_index + 1) % self.frames.len()
+impl PartStatus {
+    fn tick(&mut self) -> () {
+        match self {
+            Self::Waiting(a) => a.tick(),
+            Self::Running(a) => a.tick(),
+            _ => ()
+        }
     }
 }
 
-impl Display for CliAnimation {
+impl Display for PartStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.frames[self.frame_index])
+        match self {
+            Self::Waiting(anim) => write!(f, "{}", anim),
+            Self::Running(anim) => write!(f, "{}", anim),
+            Self::Done(_) => write!(f, "✓"),
+        }
     }
 }
 
-fn running_animation() -> CliAnimation {
-    CliAnimation {
-        frame_index: 0,
-        frames: vec!['⠏', '⠛', '⠹', '⠼', '⠶', '⠧'],
+
+struct SolutionStatus {
+    part_a: PartStatus,
+    part_b: PartStatus,
+    day: aoc::Day,
+}
+
+impl SolutionStatus {
+    fn tick(&mut self) -> () {
+        self.part_a.tick();
+        self.part_b.tick();
     }
 }
 
-fn waiting_animation() -> CliAnimation {
-    CliAnimation {
-        frame_index: 0,
-        frames: vec!['⠄', '⠄', '⠄', '⠄', ' ', ' ', ' ', ' '],
+impl Display for SolutionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02}.a {}\n  .b {}", self.day, self.part_a, self.part_b)
     }
 }
+
 
 struct App {
     config: config::Config,
     tick_rx: mpsc::Receiver<()>,
 
-    solutions: Vec<SolutionState>,
-    animations: CliAnimation,
+    solutions: Vec<SolutionStatus>,
 }
 
 fn print_results(app: &App) -> Result<(), std::io::Error> {
-    stdout().execute(crossterm::cursor::Hide)?;
 
     for sol in app.solutions.iter() {
-        println!("{}.{}", sol.day, aoc::Part::A);
-        println!("  .{}", aoc::Part::B);
+        println!("{}", sol);
     }
 
-    stdout().execute(crossterm::cursor::MoveUp(50))?;
+    Ok(())
+}
+
+fn init_terminal() -> Result<(), std::io::Error> {
+    std::io::stdout().execute(crossterm::cursor::Hide)?;
+
+    Ok(())
+}
+
+fn reset_terminal() -> Result<(), std::io::Error> {
+    std::io::stdout().execute(crossterm::cursor::MoveUp(50))?;
 
     Ok(())
 }
@@ -121,10 +129,10 @@ pub fn run(config: config::Config) -> Result<(), std::io::Error> {
 
     let mut solutions = Vec::with_capacity(num_days);
     for d in aoc::Day::all() {
-        solutions.push(SolutionState {
-            part_a_state: SolutionStatus::Waiting,
-            part_b_state: SolutionStatus::Waiting,
+        solutions.push(SolutionStatus {
             day: d,
+            part_a: PartStatus::Waiting(spinner::waiting()),
+            part_b: PartStatus::Waiting(spinner::waiting()),
         });
     }
 
@@ -132,7 +140,6 @@ pub fn run(config: config::Config) -> Result<(), std::io::Error> {
         config,
         tick_rx,
         solutions,
-        animations: waiting_animation(),
     };
 
     let tick_interval = app.config.tui_update_interval;
@@ -144,11 +151,19 @@ pub fn run(config: config::Config) -> Result<(), std::io::Error> {
 
     let mut count = 0;
 
+    init_terminal()?;
+    print_results(&app)?;
+
     loop {
         if let Ok(_) = app.tick_rx.try_recv() {
             count += 1;
+            reset_terminal()?;
             print_results(&app)?;
-            app.animations.update();
+
+            for sol in app.solutions.iter_mut() {
+                sol.tick();
+            } 
+
         }
 
         if count == 10 {

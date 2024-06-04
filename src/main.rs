@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 /*
 * Advent of Code 2023 Solutions Copyright (C) 2024 Alex Bechanko
 * <alexbechanko@gmail.com>
@@ -17,11 +15,13 @@ use std::fmt::Display;
 * You should have received a copy of the GNU General Public License along with
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 mod aoc;
 mod cli;
 mod config;
 mod time;
 mod tui;
+mod spinner;
 
 fn main() -> Result<(), std::io::Error> {
     let config = config::Config::default();
