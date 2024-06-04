@@ -39,7 +39,7 @@ impl Display for Duration {
         };
 
         let dur = major as f64 + (minor - major * 1000) as f64 / 1000.0;
-        write!(f, "{:2}{}", dur, unit)
+        write!(f, "{}{}", dur, unit)
     }
 }
 

@@ -16,15 +16,62 @@
 * this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crossterm::ExecutableCommand;
+
 mod aoc;
-mod cli;
-mod config;
 mod time;
-mod tui;
-mod spinner;
+
+const WAITING_ANIMATION: [&str; 6] = [".  ", ".. ", "...", " ..", "  .", "   "];
+
+fn run_part(day: aoc::Day, part: aoc::Part) -> Result<(), std::io::Error> {
+    let input_folder = std::path::PathBuf::from("inputs");
+    let input = aoc::day_file(&input_folder, day);
+    let (ans_tx, ans_rx) = std::sync::mpsc::channel();
+
+    std::thread::spawn(move || {
+        let res = aoc::solve(day, aoc::Part::A, &input);
+        ans_tx.send(res).unwrap();
+    });
+
+    // loop while we wait for thread to return answer
+    // update cli waiting animation for the solution as we do
+    let mut animation_index: usize = 0;
+
+    match part {
+        aoc::Part::A => print!("{:02}.a  ", day),
+        aoc::Part::B => print!("  .b  "),
+    }
+
+    loop {
+        if let Ok(res) = ans_rx.try_recv() {
+            match res {
+                Ok((answer, elapsed)) => println!("{:10}  {}", elapsed, answer),
+                Err(err) => println!("{:10}  {}", "n/a", err),
+            }
+
+            break;
+        } else {
+            std::io::stdout().execute(crossterm::cursor::SavePosition)?;
+            print!("{}", WAITING_ANIMATION[animation_index]);
+            animation_index = (animation_index + 1) % WAITING_ANIMATION.len();
+            std::io::stdout().execute(crossterm::cursor::RestorePosition)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run() -> Result<(), std::io::Error> {
+    std::io::stdout().execute(crossterm::cursor::Hide)?;
+
+    for day in aoc::Day::all() {
+        run_part(day, aoc::Part::A)?;
+        run_part(day, aoc::Part::B)?;
+    }
+
+    Ok(())
+}
 
 fn main() -> Result<(), std::io::Error> {
-    let config = config::Config::default();
-
-    tui::run(config)
+    run()
 }

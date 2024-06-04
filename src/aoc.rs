@@ -18,7 +18,7 @@
 
 use crate::time;
 
-type SolutionFunc<'a> = &'a dyn Fn(&str) -> Result<String, Box<dyn std::error::Error>>;
+type SolutionFunc<'a> = &'a dyn Fn(&str) -> Result<String, Box<dyn std::error::Error + Send>>;
 
 type DayFuncs<'a> = (SolutionFunc<'a>, SolutionFunc<'a>);
 
@@ -26,9 +26,9 @@ const DAYS: [DayFuncs; 0] = [];
 
 #[derive(Debug)]
 pub enum SolveError {
-    NotImplemented(Day, Part),
+    NotImplemented,
     FileError(std::path::PathBuf),
-    SolutionError(Day, Part, Box<dyn std::error::Error>),
+    SolutionError(Day, Part, Box<dyn std::error::Error + Send>),
 }
 
 impl std::error::Error for SolveError {}
@@ -36,7 +36,7 @@ impl std::error::Error for SolveError {}
 impl std::fmt::Display for SolveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SolveError::NotImplemented(day, part) => write!(f, "Problem {}.{} not implemented", day, part),
+            SolveError::NotImplemented => write!(f, "Not Implemented"),
             SolveError::FileError(path) => {
                 write!(f, "Failed to read file {}", path.to_string_lossy())
             }
@@ -126,7 +126,7 @@ impl std::fmt::Display for Part {
 
 pub fn solve(day: Day, part: Part, input: &std::path::Path) -> Result<(String, time::Duration), SolveError> {
     let Some((part_a, part_b)) = DAYS.get(day.0 - 1) else {
-        return Err(SolveError::NotImplemented(day, part));
+        return Err(SolveError::NotImplemented);
     };
 
     let Ok(data) = std::fs::read_to_string(input) else {
